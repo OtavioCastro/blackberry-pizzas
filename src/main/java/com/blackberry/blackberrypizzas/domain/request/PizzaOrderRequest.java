@@ -15,6 +15,6 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class PizzaOrderRequest {
-    private List<Pizza> pizza;
+    private List<Pizza> pizzas;
     private Costumer costumer;
 }

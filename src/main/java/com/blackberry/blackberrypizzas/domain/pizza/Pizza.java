@@ -1,7 +1,6 @@
 package com.blackberry.blackberrypizzas.domain.pizza;
 
 import com.blackberry.blackberrypizzas.domain.enums.PizzaSize;
-import com.blackberry.blackberrypizzas.repository.entity.PizzaEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
