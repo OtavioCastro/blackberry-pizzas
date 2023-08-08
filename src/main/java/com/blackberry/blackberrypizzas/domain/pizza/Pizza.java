@@ -14,4 +14,5 @@ import lombok.NoArgsConstructor;
 public class Pizza {
     private String flavor;
     private PizzaSize size;
+    private Boolean twoFlavors = false;
 }
