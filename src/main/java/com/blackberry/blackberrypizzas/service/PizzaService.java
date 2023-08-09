@@ -6,6 +6,7 @@ import com.blackberry.blackberrypizzas.domain.request.PizzaOrderRequest;
 import java.util.List;
 
 public interface PizzaService {
-    List<Order> getPizzaOrders();
+    List<Order> getPizzaOrders(String costumerPhone);
     Order sendPizzaOrder(PizzaOrderRequest pizzaOrderRequest);
+    void cancelOrder(String cancelOrderNumber);
 }

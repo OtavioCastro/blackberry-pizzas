@@ -50,10 +50,11 @@ public class PizzaServiceImpl implements PizzaService {
     private final PizzaToPizzaEntityConverter pizzaToPizzaEntityConverter;
 
     private static Integer ORDER_QUANTITY = 0;
+    private static final List<StatusOrder> STATUS_ALLOW_CANCEL = List.of(StatusOrder.TO_DO, StatusOrder.IN_PROGRESS);
 
     @Override
-    public List<Order> getPizzaOrders() {
-        return orderRepository.findAll()
+    public List<Order> getPizzaOrders(String costumerPhone) {
+        return orderRepository.findByCostumerPhone(costumerPhone)
                 .stream()
                 .map(orderEntityToOrderConverter::convert)
                 .collect(Collectors.toList());
@@ -68,7 +69,7 @@ public class PizzaServiceImpl implements PizzaService {
                 .orElseGet(() -> buildCostumerEntity(pizzaOrderRequest.getCostumer()));
 
         final OrderEntity orderEntity = OrderEntity.builder()
-                .orderNumer(generateOrderNumber())
+                .orderNumber(generateOrderNumber())
                 .costumer(costumerEntity)
                 .price(calculateOrderPrice(pizzaOrderRequest.getPizzas()))
                 .pizzas(buildPizzasEntity(pizzaOrderRequest.getPizzas()))
@@ -81,9 +82,27 @@ public class PizzaServiceImpl implements PizzaService {
         return orderEntityToOrderConverter.convert(order);
     }
 
+    @Override
+    public void cancelOrder(String orderNumber) {
+        log.log(Level.INFO, "Solicitando o cancelamento do pedido " + orderNumber);
+
+        OrderEntity order = orderRepository.findByOrderNumber(Long.valueOf(orderNumber));
+
+        if(STATUS_ALLOW_CANCEL.contains(order.getStatus())){
+            orderRepository.cancelOrder(StatusOrder.CANCELED, order.getOrderNumber());
+        } else {
+            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "Não é possível cancelar o pedido, pois ele está com o status " + order.getStatus().getStatus());
+        }
+    }
+
     private Long generateOrderNumber() {
+        log.log(Level.INFO, "Gerando o número do pedido");
+
         ORDER_QUANTITY++;
         String orderCode = new SimpleDateFormat("yyMMdd").format(Date.from(Instant.now())).concat(ORDER_QUANTITY.toString());
+
+        log.log(Level.INFO, "Número do pedido gerado! Número: " + orderCode);
+
         return Long.valueOf(orderCode);
     }
 

@@ -1,7 +1,6 @@
 package com.blackberry.blackberrypizzas.repository.entity;
 
 import com.blackberry.blackberrypizzas.domain.enums.StatusOrder;
-import com.blackberry.blackberrypizzas.domain.order.Order;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,7 +18,7 @@ public class OrderEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
-    private Long orderNumer;
+    private Long orderNumber;
     @ManyToOne
     private CostumerEntity costumer;
     private Double price;
