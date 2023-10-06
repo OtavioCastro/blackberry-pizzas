@@ -13,6 +13,7 @@ import com.blackberry.blackberrypizzas.repository.PizzaRepository;
 import com.blackberry.blackberrypizzas.repository.entity.CostumerEntity;
 import com.blackberry.blackberrypizzas.repository.entity.OrderEntity;
 import com.blackberry.blackberrypizzas.repository.entity.PizzaEntity;
+import com.blackberry.blackberrypizzas.service.CostumerService;
 import com.blackberry.blackberrypizzas.service.PizzaService;
 import com.blackberry.blackberrypizzas.service.converter.*;
 import lombok.AllArgsConstructor;
@@ -37,6 +38,8 @@ import static java.util.Comparator.comparingDouble;
 @Service
 public class PizzaServiceImpl implements PizzaService {
 
+    private final CostumerService costumerService;
+
     private final CostumerRepository costumerRepository;
     private final CostumerAddressRepository costumerAddressRepository;
     private final OrderRepository orderRepository;
@@ -51,6 +54,7 @@ public class PizzaServiceImpl implements PizzaService {
 
     private static Integer ORDER_QUANTITY = 0;
     private static final List<StatusOrder> STATUS_ALLOW_CANCEL = List.of(StatusOrder.TO_DO, StatusOrder.IN_PROGRESS);
+    private static final List<StatusOrder> STATUS_NOT_ALLOW_CHANGE = List.of(StatusOrder.CANCELED, StatusOrder.DELIVERED);
 
     @Override
     public List<Order> getPizzaOrders(String costumerPhone) {
@@ -65,8 +69,13 @@ public class PizzaServiceImpl implements PizzaService {
 
         log.log(Level.INFO, "Carregando dados do Cliente...");
 
-        CostumerEntity costumerEntity = Optional.ofNullable(costumerRepository.findByCostumerPhone(pizzaOrderRequest.getCostumer().getCostumerPhone()))
-                .orElseGet(() -> buildCostumerEntity(pizzaOrderRequest.getCostumer()));
+        CostumerEntity costumerEntity = Optional.ofNullable(costumerRepository.findByCostumerPhone(
+                pizzaOrderRequest.getCostumer().getCostumerPhone())
+                )
+                .orElseGet(() -> costumerToCostumerEntityConverter.convert(
+                        costumerService.addCostumer(pizzaOrderRequest.getCostumer())
+                        )
+                );
 
         final OrderEntity orderEntity = OrderEntity.builder()
                 .orderNumber(generateOrderNumber())
@@ -83,15 +92,31 @@ public class PizzaServiceImpl implements PizzaService {
     }
 
     @Override
-    public void cancelOrder(String orderNumber) {
-        log.log(Level.INFO, "Solicitando o cancelamento do pedido " + orderNumber);
-
+    public void updateOrder(String orderNumber, StatusOrder statusOrder) {
         OrderEntity order = orderRepository.findByOrderNumber(Long.valueOf(orderNumber));
 
+        if(statusOrder.equals(StatusOrder.CANCELED)){
+            log.log(Level.INFO, "Realizando o cancelamento do pedido " + orderNumber);
+            cancelOrder(order);
+        } else {
+            log.log(Level.INFO, "Atualizando o status do pedido " + orderNumber);
+            changeOrder(order, statusOrder);
+        }
+    }
+
+    private void cancelOrder(OrderEntity order) {
         if(STATUS_ALLOW_CANCEL.contains(order.getStatus())){
-            orderRepository.cancelOrder(StatusOrder.CANCELED, order.getOrderNumber());
+            orderRepository.changeOrderStatus(StatusOrder.CANCELED, order.getOrderNumber());
         } else {
             throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "Não é possível cancelar o pedido, pois ele está com o status " + order.getStatus().getStatus());
+        }
+    }
+
+    private void changeOrder(OrderEntity order, StatusOrder statusOrder) {
+        if(!STATUS_NOT_ALLOW_CHANGE.contains(order.getStatus())){
+            orderRepository.changeOrderStatus(statusOrder, order.getOrderNumber());
+        } else {
+            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "Não é possível alterar o status do pedido, pois ele está com o status " + order.getStatus().getStatus());
         }
     }
 
@@ -133,13 +158,6 @@ public class PizzaServiceImpl implements PizzaService {
         List<PizzaEntity> pizzaEntityList = pizza.stream()
                 .map(pizzaToPizzaEntityConverter::convert).toList();
         return pizzaRepository.saveAll(pizzaEntityList);
-    }
-
-    private CostumerEntity buildCostumerEntity(Costumer costumer) {
-        log.log(Level.INFO, "Cliente não cadastrado! Realizando o cadastro...");
-
-        CostumerEntity costumerEntity = costumerToCostumerEntityConverter.convert(costumer);
-        return costumerRepository.save(costumerEntity);
     }
 
 }

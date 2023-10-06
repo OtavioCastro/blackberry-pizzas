@@ -15,6 +15,7 @@ public class CostumerEntity {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
     private String name;
+    private String cpf;
     private String costumerPhone;
     @OneToOne(cascade = CascadeType.PERSIST)
     private CostumerAddressEntity costumerAddress;

@@ -1,5 +1,6 @@
-package com.blackberry.blackberrypizzas.domain.costumer;
+package com.blackberry.blackberrypizzas.domain.request;
 
+import com.blackberry.blackberrypizzas.domain.costumer.CostumerAddress;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -9,9 +10,9 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class Costumer {
-    private String name;
+public class CostumerAddDto {
     private String cpf;
+    private String costumerName;
     private String costumerPhone;
     private CostumerAddress costumerAddress;
 }

@@ -12,12 +12,12 @@ import java.util.List;
 
 public interface OrderRepository extends JpaRepository<OrderEntity, Long> {
     @Query("SELECT o FROM ORDER_PIZZA o INNER JOIN o.costumer c WHERE c.costumerPhone = :costumerPhoneRequested ORDER BY o.id DESC")
-    List<OrderEntity> findByCostumerPhone(@Param("costumerPhoneRequested") String teste);
+    List<OrderEntity> findByCostumerPhone(@Param("costumerPhoneRequested") String costumerPhone);
 
     OrderEntity findByOrderNumber(Long orderNumber);
 
     @Modifying
     @Transactional
-    @Query("UPDATE ORDER_PIZZA o SET o.status = :newStatus WHERE o.orderNumber = :orderNumberToCancel")
-    void cancelOrder(@Param("newStatus") StatusOrder statusOrder, @Param("orderNumberToCancel") Long orderNumber);
+    @Query("UPDATE ORDER_PIZZA o SET o.status = :newStatus WHERE o.orderNumber = :orderNumberToChange")
+    void changeOrderStatus(@Param("newStatus") StatusOrder statusOrder, @Param("orderNumberToChange") Long orderNumber);
 }
