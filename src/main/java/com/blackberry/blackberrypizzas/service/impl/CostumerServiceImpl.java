@@ -70,11 +70,11 @@ public class CostumerServiceImpl implements CostumerService {
         }
     }
 
-    private CostumerEntity buildCostumerEntity(Costumer costumer) {
+    private void buildCostumerEntity(Costumer costumer) {
         log.log(Level.INFO, "Cliente não cadastrado! Realizando o cadastro...");
 
         CostumerEntity costumerEntity = toCostumerEntityConverter.convert(costumer);
-        return costumerRepository.save(costumerEntity);
+        costumerRepository.save(costumerEntity);
     }
 
 }
