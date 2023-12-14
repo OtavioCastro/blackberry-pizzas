@@ -1,18 +1,18 @@
 package com.blackberry.blackberrypizzas.service.impl;
 
-import com.blackberry.blackberrypizzas.domain.costumer.Costumer;
-import com.blackberry.blackberrypizzas.domain.enums.PizzaEnum;
 import com.blackberry.blackberrypizzas.domain.enums.StatusOrder;
 import com.blackberry.blackberrypizzas.domain.order.Order;
 import com.blackberry.blackberrypizzas.domain.pizza.Pizza;
+import com.blackberry.blackberrypizzas.domain.request.PizzaFlavorRequest;
 import com.blackberry.blackberrypizzas.domain.request.PizzaOrderRequest;
-import com.blackberry.blackberrypizzas.repository.CostumerAddressRepository;
 import com.blackberry.blackberrypizzas.repository.CostumerRepository;
 import com.blackberry.blackberrypizzas.repository.OrderRepository;
+import com.blackberry.blackberrypizzas.repository.PizzaFlavorRepository;
 import com.blackberry.blackberrypizzas.repository.PizzaRepository;
 import com.blackberry.blackberrypizzas.repository.entity.CostumerEntity;
 import com.blackberry.blackberrypizzas.repository.entity.OrderEntity;
 import com.blackberry.blackberrypizzas.repository.entity.PizzaEntity;
+import com.blackberry.blackberrypizzas.repository.entity.PizzaFlavorEntity;
 import com.blackberry.blackberrypizzas.service.CostumerService;
 import com.blackberry.blackberrypizzas.service.PizzaService;
 import com.blackberry.blackberrypizzas.service.converter.*;
@@ -25,13 +25,12 @@ import org.springframework.web.client.HttpClientErrorException;
 
 import java.text.SimpleDateFormat;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.util.Comparator.comparingDouble;
+import static java.util.Objects.isNull;
+import static java.util.Optional.ofNullable;
 
 @Log4j2
 @AllArgsConstructor
@@ -41,9 +40,9 @@ public class PizzaServiceImpl implements PizzaService {
     private final CostumerService costumerService;
 
     private final CostumerRepository costumerRepository;
-    private final CostumerAddressRepository costumerAddressRepository;
     private final OrderRepository orderRepository;
     private final PizzaRepository pizzaRepository;
+    private final PizzaFlavorRepository pizzaFlavorRepository;
 
     private final CostumerEntityToCostumerConverter costumerEntityToCostumerConverter;
     private final CostumerToCostumerEntityConverter costumerToCostumerEntityConverter;
@@ -69,13 +68,10 @@ public class PizzaServiceImpl implements PizzaService {
 
         log.log(Level.INFO, "Carregando dados do Cliente...");
 
-        CostumerEntity costumerEntity = Optional.ofNullable(costumerRepository.findByCostumerPhone(
+        CostumerEntity costumerEntity = ofNullable(costumerRepository.findByCostumerPhone(
                 pizzaOrderRequest.getCostumer().getCostumerPhone())
                 )
-                .orElseGet(() -> costumerToCostumerEntityConverter.convert(
-                        costumerService.addCostumer(pizzaOrderRequest.getCostumer())
-                        )
-                );
+                .orElseThrow(() -> new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "Cliente não cadastrado!"));
 
         final OrderEntity orderEntity = OrderEntity.builder()
                 .orderNumber(generateOrderNumber())
@@ -102,6 +98,18 @@ public class PizzaServiceImpl implements PizzaService {
             log.log(Level.INFO, "Atualizando o status do pedido " + orderNumber);
             changeOrder(order, statusOrder);
         }
+    }
+
+    @Override
+    public void createPizzaFlavor(PizzaFlavorRequest pizzaFlavorRequest) {
+        if(isNull(pizzaFlavorRepository.findByFlavor(pizzaFlavorRequest.getFlavor()))){
+            final PizzaFlavorEntity pizzaFlavorToSave = PizzaFlavorEntity.builder()
+                    .flavor(pizzaFlavorRequest.getFlavor())
+                    .price(pizzaFlavorRequest.getPrice())
+                    .description(pizzaFlavorRequest.getDescription())
+                    .build();
+            pizzaFlavorRepository.save(pizzaFlavorToSave);
+        } else throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "Sabor de pizza já cadastrado no sistema");
     }
 
     private void cancelOrder(OrderEntity order) {
@@ -133,25 +141,32 @@ public class PizzaServiceImpl implements PizzaService {
 
     private Double calculateOrderPrice(List<Pizza> pizzas) {
         return pizzas.stream()
-                .map(pizza -> {
-                    if(pizza.getTwoFlavors()){
-                        return calculateMostExpensiveFlavor(pizza.getFlavor().replace(" ", "_"));
-                    } else {
-                        return pizza.getFlavor().replace(" ", "_");
-                    }
-                })
-                .map(pizzaFlavor -> PizzaEnum.valueOf(pizzaFlavor.toUpperCase()))
-                .map(PizzaEnum::getPrice)
+                .map(this::getPizzaFlavor)
+                .map(pizzaFlavorRepository::findByFlavor)
+                .map(PizzaFlavorEntity::getPrice)
                 .reduce(0.00, Double::sum);
+    }
+
+    private String getPizzaFlavor(Pizza pizza) {
+        if(pizza.getTwoFlavors()){
+            return calculateMostExpensiveFlavor(pizza.getFlavor());
+        } else {
+            return getFlavorRepository(pizza.getFlavor()).getFlavor();
+        }
+    }
+
+    private PizzaFlavorEntity getFlavorRepository(String flavor) {
+        return ofNullable(pizzaFlavorRepository.findByFlavor(flavor))
+                .orElseThrow(() -> new HttpClientErrorException(HttpStatus.NOT_FOUND, "Sabor de pizza não encontrado."));
     }
 
     private String calculateMostExpensiveFlavor(String flavor) {
         final List<String> flavors = Arrays.stream(flavor.split("/")).toList();
         return flavors.stream()
-                .map(pizza -> PizzaEnum.valueOf(pizza.toUpperCase()))
-                .max(comparingDouble(PizzaEnum::getPrice))
-                .map(PizzaEnum::getFlavor)
-                .orElseThrow(() -> new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "Sabor de pizza não encontrado."));
+                .map(this::getFlavorRepository)
+                .max(comparingDouble(PizzaFlavorEntity::getPrice))
+                .map(PizzaFlavorEntity::getFlavor)
+                .orElseThrow(() -> new HttpClientErrorException(HttpStatus.NOT_FOUND, "Sabor de pizza não encontrado."));
     }
 
     private List<PizzaEntity> buildPizzasEntity(List<Pizza> pizza) {

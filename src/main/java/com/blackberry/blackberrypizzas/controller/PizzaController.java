@@ -3,6 +3,7 @@ package com.blackberry.blackberrypizzas.controller;
 import com.blackberry.blackberrypizzas.domain.enums.StatusOrder;
 import com.blackberry.blackberrypizzas.domain.order.Order;
 import com.blackberry.blackberrypizzas.domain.request.CancelOrderRequest;
+import com.blackberry.blackberrypizzas.domain.request.PizzaFlavorRequest;
 import com.blackberry.blackberrypizzas.domain.request.PizzaOrderRequest;
 import com.blackberry.blackberrypizzas.domain.request.StatusOrderUpdateRequest;
 import com.blackberry.blackberrypizzas.service.PizzaService;
@@ -46,5 +47,11 @@ public class PizzaController {
     @PutMapping("/update")
     public void updateStatusOrder(@RequestBody StatusOrderUpdateRequest statusOrderUpdateRequest){
         pizzaService.updateOrder(statusOrderUpdateRequest.getOrderNumber(), statusOrderUpdateRequest.getStatusOrder());
+    }
+
+    @ResponseStatus(HttpStatus.CREATED)
+    @PostMapping("/flavor")
+    public void createPizzaFlavor(@RequestBody PizzaFlavorRequest pizzaFlavorRequest){
+        pizzaService.createPizzaFlavor(pizzaFlavorRequest);
     }
 }
