@@ -1,0 +1,20 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: "jdbc:postgresql://localhost:5432/blackberry-pizzas"
+    username: "postgres"
+    password: "banco123"
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: "create-drop"
+  cloud:
+    compatibility-verifier:
+      enabled: false
+
+blackberry:
+  url:
+    crm: "localhost:8081"
+
